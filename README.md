@@ -1,27 +1,61 @@
+# LVA: Latent Variance Assessment for Stack Stability
 
-🆕 **[2026-03-16]:** :fire: V-JEPA 2.1 is released :fire: A new familly of models trained with a novel recipe that learns high quality and temporolly consistent dense features !!!
+This repository implements **Latent Variance Assessment (LVA)**, a stack-stability method built on
+V-JEPA 2 latent world models. LVA estimates whether a stack is stable by encoding the scene into a
+latent representation, applying imagined perturbations in latent/action space, rolling those
+perturbations through an action-conditioned latent dynamics model, and using the resulting
+predictive variance as an instability score.
 
-**[2025-06-25]:** V-JEPA 2 is released. [[`Blog`](https://ai.meta.com/blog/v-jepa-2-world-model-benchmarks)]
+The central idea is simple: stable stacks should respond consistently to small disturbances, while
+unstable stacks should produce high-variance predicted futures. The implementation in this repo adds
+the LVA training, latent extraction, inference, and test utilities on top of the original V-JEPA 2 code.
 
+## LVA Components
 
-# V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning
+- **Latent dynamics model**: predicts the next V-JEPA latent state conditioned on a placement action.
+- **Perturbation generator**: learns small latent/action perturbations from random noise.
+- **Variance calibration**: regresses predictive variance to continuous instability targets.
+- **Stability head**: optional auxiliary regressor for discounted long-term stability labels.
+- **Latent extraction CLI**: converts frame trajectories into V-JEPA latents for LVA training.
 
-### [Meta FAIR](https://ai.meta.com/research/)
+Core files:
 
-Mahmoud Assran∗, Adrien Bardes∗, David Fan∗, Quentin Garrido∗, Russell Howes∗, Mojtaba
-Komeili∗, Matthew Muckley∗, Ammar Rizvi∗, Claire Roberts∗, Koustuv Sinha∗, Artem Zholus*,
-Sergio Arnaud*, Abha Gejji*, Ada Martin*, Francois Robert Hogan*, Daniel Dugas*, Piotr
-Bojanowski, Vasil Khalidov, Patrick Labatut, Francisco Massa, Marc Szafraniec, Kapil
-Krishnakumar, Yong Li, Xiaodong Ma, Sarath Chandar, Franziska Meier*, Yann LeCun*, Michael
-Rabbat*, Nicolas Ballas*
+- [src/models/lva.py](src/models/lva.py): LVA model, losses, variance score, discounted labels.
+- [app/lva/train.py](app/lva/train.py): config-driven LVA training entrypoint.
+- [app/lva/extract_latents.py](app/lva/extract_latents.py): V-JEPA latent extraction from trajectory tensors.
+- [app/lva/inference.py](app/lva/inference.py): variance-score inference CLI.
+- [configs/train/lva/example.yaml](configs/train/lva/example.yaml): example LVA training config.
 
-*Core Team
+## Quick Start
 
-[[`Paper`](https://arxiv.org/abs/2506.09985)] [[`Blog`](https://ai.meta.com/blog/v-jepa-2-world-model-benchmarks)] [[`BibTex`](#Citation)]
+Prepare a `.pt` or `.npz` trajectory-latent file with:
 
-Official Pytorch codebase for V-JEPA 2, V-JEPA 2-AC, V-JEPA 2.1.
+```
+latents: [episodes, steps, dim] or [episodes, steps, tokens, dim]
+actions: [episodes, steps - 1, action_dim]
+stability: optional [episodes, steps] continuous labels in [0, 1]
+collapse_step: optional [episodes], with -1 for never-collapsed episodes
+```
 
-V-JEPA 2 is a self-supervised approach to training video encoders, using internet-scale video data, that attains state-of-the-art performance on motion understanding and human action anticipation tasks. V-JEPA 2-AC is a latent action-conditioned world model post-trained from V-JEPA 2 (using a small amount of robot trajectory interaction data) that solves robot manipulation tasks without environment-specific data collection or task-specific training or calibration.
+If `stability` is omitted, LVA builds discounted survival labels from `collapse_step`.
+
+Train LVA:
+
+```
+python -m app.main --fname configs/train/lva/example.yaml --devices cuda:0
+```
+
+Run inference:
+
+```
+python -m app.lva.inference --checkpoint /tmp/lva-example/latest.pt --sample sample.pt --threshold 0.5
+```
+
+## V-JEPA 2 Foundation
+
+This project is based on the official PyTorch codebase for V-JEPA 2, V-JEPA 2-AC, and V-JEPA 2.1.
+The original V-JEPA 2 model is a self-supervised video encoder trained with masked latent prediction;
+LVA uses those representations as the latent state space for stack-stability reasoning.
 
 <p align="center">
 	<img src="assets/flowchart.png" width=100%>
