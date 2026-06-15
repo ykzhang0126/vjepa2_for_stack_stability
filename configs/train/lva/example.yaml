@@ -1,0 +1,36 @@
+app: lva
+folder: /tmp/lva-example
+data:
+  dataset: /path/to/lva_latents.npz
+  batch_size: 64
+  num_workers: 0
+  pin_mem: false
+  shuffle: true
+model:
+  latent_dim: 768
+  action_dim: 7
+  noise_dim: 128
+  dynamics_hidden_dim: 1024
+  dynamics_depth: 3
+  perturb_hidden_dim: 512
+  perturb_depth: 3
+  latent_perturb_scale: 0.02
+  action_perturb_scale: 0.02
+  stability_hidden_dim: 512
+  stability_depth: 3
+loss:
+  beta: 1.0
+  gamma: 0.97
+  perturbation_count: 16
+  dynamics_weight: 1.0
+  calibration_weight: 1.0
+  stability_weight: 1.0
+optimization:
+  stage: joint
+  epochs: 20
+  lr: 0.0001
+  weight_decay: 0.0001
+meta:
+  seed: 239
+  save_every_freq: 1
+  resume_checkpoint: null
